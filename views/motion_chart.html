@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Steam engine</title>
+<link rel="stylesheet" type="text/css" href="../style/motion_chart.css">
+<link rel="stylesheet" type="text/css" href="../style/pure-min.css">
+ <link rel="stylesheet" href="../style/leaflet.css" />
+  <link rel="stylesheet" href="../style/rangeslider.css" />
+
+
+
+
+<script type="text/javascript" src="../scripts/d3.min.js"></script>
+<script type="text/javascript" src = "../scripts/functions.js"></script>
+<script type="text/javascript" src = "../data/data.json"></script>
+
+<script type="text/javascript" src = "../scripts/jquery.min.js"></script>
+<script type="text/javascript" src = "../scripts/rangeslider.js"></script>
+
+
+
+<div id="bord">
+<h1 id="titletext">Royal Ontario Museum - Whale Deaths in the Last Century'</h1>
+  <input type="range" data-orientation="horizontal">
+  <output></output>
+
+  <div id="map">
+<svg id="mySvg" width="100%" height="100%">
+      <defs id="mdef">
+        <pattern id="image" x="0" y="0" height="100" width="100">
+          <image x="0" y="0" width="50px" height="50px" xlink:href="../style/whale.png"></image>
+        </pattern>
+		 <pattern id="image2" x="0" y="0" height="100" width="100">
+          <image x="0" y="0" width="50px" height="50px" xlink:href="../style/deadwhale.png"></image>
+        </pattern>
+  </defs>
+</svg></div>
+</div>
+
+
+ <script src="../scripts/leaflet.js"></script>
+ <script src="../scripts/L.D3SvgOverlay.min.js"></script>
+     <link rel="stylesheet" type="text/css" href="../style/leaflet-openweathermap.css" />
+    <script type="text/javascript" src="../scripts/leaflet-openweathermap.js"></script>
+
+
+<script>
+     xScale = d3.scale.linear().domain([xMin, xMax]).range([0, width]);
+    yScale = d3.scale.linear().domain([yMin, yMax]).range([height , 0]);
+var $element = $('input[type="range"]');
+var $output = $('output');
+console.log($element);
+
+function updateOutput(el, val) {
+  el.textContent = val;
+}
+
+$element
+  .rangeslider({
+    polyfill: false,
+    onInit: function() {
+      updateOutput($output[0], this.value);
+    }
+  })
+  .on('input', function() {
+    updateOutput($output[0], this.value);
+  });
+   function position(rect)
+  {
+	 rect
+	.attr("width", "50px")
+	.attr("height", "50px")
+	.attr('x',function(d){d["latLng"] = [d.lat[1],d.lng[1]];return proj2.latLngToLayerPoint(d).x;})
+    .attr('y',function(d){d["latLng"] = [d.lat[1],d.lng[1]];return proj2.latLngToLayerPoint(d).y;});
+    /*rect .attr("lat", function(d) { 
+	//var ttt = xScale(x(d));
+	return xScale(d.lat); })
+        .attr("lng", function(d) { 
+		var ttt = d.lng;
+		return yScale(ttt) -50; })
+		.attr("width", "30px")
+		.attr("height", "20px");
+        //.attr("r", function(d) { return radiusScale(radius(d)); });*/
+  }
+  
+  function position_t(text)
+  {
+    text.attr("dx", function(d) { 
+	var ttt = xScale(x(d));
+	return (xScale(x(d))-5); })
+        .attr("dy", function(d) { 
+		var ttt = yScale(y(d));
+		return (yScale(y(d))+3); })
+        //.attr("r", function(d) { return radiusScale(radius(d)); });
+  }
+function order(a, b)
+  {
+    return radius(b) - radius(a);
+  }
+
+  // After the transition finishes, you can mouseover to change the year.
+  function enableInteraction()
+  {
+    var box = label.node().getBBox();
+
+    var yearScale = d3.scale.linear()
+        .domain([yearMin, yearMax])
+        .range([box.x + 10, box.x + box.width - 10])
+        .clamp(true);
+
+    svg.append("rect")
+        .attr("class", "overlay")
+        .attr("x", box.x)
+        .attr("y", box.y)
+        .attr("width", box.width)
+        .attr("height", box.height)
+        .on("mouseover", mouseover)
+        .on("mouseout", mouseout)
+        .on("mousemove", mousemove)
+        .on("touchmove", mousemove);
+
+		
+    function mouseover()
+    {
+      label.classed("active", true);
+    }
+
+    function mouseout()
+    {
+      label.classed("active", false);
+    }
+
+    function mousemove()
+    {
+      displayYear(yearScale.invert(d3.mouse(this)[0]));
+    }
+  }
+
+  // Tweens the entire chart by first tweening the year, and then the data.
+  // For the interpolated data, the rects and label are redrawn.
+  function tweenYear() {
+    var year = d3.interpolateNumber(yearMin, yearMax);
+    return function(t) { displayYear(year(t)); };
+  }
+  
+  function tweenYear_p() {
+	var res =[];
+	var dic =[];
+	
+	for (var i = yearMin; i <= yearMax; i++) {
+		var temp = interpolateData(i);
+		for (j = 0; j<temp.length;j++){
+			var name = temp[j].name;
+			if(!(name in dic)){
+				var xx = temp[j].x;
+				var yx = temp[j].y;
+				dic[name] = [];
+				dic[name].push({
+				"x" : xx,
+				"y" : yx});
+			} else {
+				var xx = temp[j].x;
+				var yx = temp[j].y;
+				dic[name].push({
+				"x" : xx,
+				"y" : yx});
+			
+			}
+			var fds ="";
+		}
+		//res.push(interpolateData(i));
+	}
+	
+	
+    
+	return dic;
+  }
+
+
+  // Updates the display to show the specified year.
+  function displayYear(year)
+  {
+	year = Math.floor(year);
+    rect.data(interpolateData(year), key).call(position).sort(order);
+    deadrect.data(interpolateData2(year), key).call(position).sort(order);
+	//text.data(interpolateData(year), key).call(position_t).sort(order);
+	rect.select("title")
+      .text(function(d) {return d.name + ":\n\n" + xtitle + "=" + d.x + "\n" + ytitle + "=" + d.y });
+    var yr = 1950 + Math.floor((Math.round(year) -  yearMin)/8);
+	//label.text(Math.round(year));
+	label.text(yr);
+  }
+
+  // Interpolates the dataset for the given (fractional) year.
+  function interpolateData(year)
+  {
+    return data.map(function(d) {
+	var test = d.population;
+	var tests =""
+      return {
+        name: d.name,
+        place: d.place,
+        lat: interpolateValues(d.lat, year),
+        population: interpolateValues(d.population, year),
+        lng: interpolateValues(d.lng, year)
+      };
+    });
+  }
+    function interpolateData2(year)
+  {
+    return deadData.map(function(d) {
+	var test = d.population;
+	var tests =""
+      return {
+        name: d.name,
+        place: d.place,
+        lat: interpolateValues(d.lat, year),
+        population: interpolateValues(d.population, year),
+        lng: interpolateValues(d.lng, year)
+      };
+    });
+  }
+
+  // Finds (and possibly interpolates) the value for the specified year.
+  function interpolateValues(values, year) {
+    var i = bisect.left(values, year, 0, values.length - 1),
+        a = values[i];
+    if (i > 0) {
+      var b = values[i - 1],
+          t = (year - a[0]) / (b[0] - a[0]);
+      return a[1] * (1 - t) + b[1] * t;
+    }
+    return a[1];
+  };
+  function interpolateLatLng(values, year) {
+    var i = bisect.left(values, year, 0, values.length - 1),
+        a = values[i];
+    if (i > 0) {
+      var b = values[i - 1],
+          t = (year - a[0]) / (b[0] - a[0]);
+      return a[1] * (1 - t) + b[1] * t;
+    }
+    return a[1];
+  }
+
+
+
+data  = {"lat":[],"lng":[],"population":[],"name":[],"place":[]};
+//data = [];
+var map = new L.Map("map", {center: [52.8568, -92.3881], zoom: 5,renderer: L.svg()})
+    //.addLayer(new L.TileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"));
+	.addLayer(new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18, attribution: '[insert correct attribution here!]' }));
+var clouds = L.OWM.temperature({showLegend: false, opacity: 0.5});
+
+
+var cities = [];
+  var bisect = d3.bisector(function(d) { return d[0]; });
+
+var citiesOverlay = L.d3SvgOverlay(function(sel,proj){
+	proj2 = proj;
+  var minLogPop = Math.log2(d3.min(cities,function(d){return d.population[1];}));
+  svg = sel;
+    var rect1 = sel.append("g")
+      .attr("class", "rects")
+    .selectAll(".rect")
+    // Used to be 1800
+      .data(interpolateData(0)).enter().append("g").attr("class", "node");
+  rect = rect1.append('rect')
+    //.attr('r',function(d){return Math.log2(d.population) - minLogPop + 2;})
+    .attr('width', "30px")
+	.attr('height',"30px")
+	//.call(position)
+    //.attr('stroke','black')
+    //.attr('stroke-width',1)
+    .attr('fill',"url(#image)");
+	
+	deadrect = rect1.append('rect')
+		.attr('width', "30px")
+		.attr('height',"30px")
+		.attr('fill','url(#image2)');
+	label = sel.append("text")
+		.attr("class", "year label")
+		.attr("text-anchor", "end")
+		.attr("y", document.getElementById("map").getBoundingClientRect().bottom - 30)
+		.attr("x", document.getElementById("map").getBoundingClientRect().right);
+  time = (2016 - 1950)*1000;
+  sel.transition()
+      .duration(time)
+      .ease("linear")
+      .tween("year", tweenYear)
+	  .each("end", enableInteraction);
+});
+data = [];
+deadData =[];
+latPath = [61.849930,60.949645,63.776661,57.224367,57.224367,63.776661,60.949645,61.849930];
+lngPath =[-56.953125,-66.304690,-78.046875,-86.484375,-86.484375,-78.046875,-66.304690,-56.953125];
+d3.csv("../scripts/swiss-cities.csv",function(data2){
+  for (var i=0;i < data2.length - 150;i++) {
+	  var data3 = {"lat":[],"lng":[],"population":[]};
+	  var data4 = {"lat":[],"lng":[],"population":[]};
+	  for (var j=0;j<528;j++) {
+		  data3["lat"].push([1488 + j, 2*(i/(data2.length - 150))*Math.random()+latPath[j%8]]);
+		  data3["lng"].push([1488 + j,2*(i/(data2.length - 150))*Math.random()+ lngPath[j%8]]);
+		  data3["name"] = data2[i].name;
+		  data3["place"] = data2[i].place;
+		  data3["population"].push([1488 + j,data2[i].population]);
+		  data4["lat"].push([1488 + j, 2*(i/(data2.length - 150))*Math.random()+57.224367]);
+		  data4["lng"].push([1488 + j,2*(i/(data2.length - 150))*Math.random()+-86.484375]);
+		  data4["name"] = data2[i].name;
+		  data4["place"] = data2[i].place;
+		  data4["population"].push([1488 + j,data2[i].population]);
+	  };
+  data.push(data3);
+  deadData.push(data4);
+  };
+	//data = [data];
+    /*cities = data.map(function(d){
+	console.log(d);
+    d.latLng = [d.lat[1],d.lng[1]];
+    //d.population = (d.population[1] == '') ? 2000 : +d.population[1]; //NAs
+    return d;
+  });
+  console.log(cities);*/
+  citiesOverlay.addTo(map);
+    clouds.addTo(map);
+
+});
+
+
+	
+ /*socket = new WebSocket("ws://localhost:8083", "protocolOne");
+  socket.onopen = function (event) {
+		socket.send("Connected"); 
+		};
+  socket.onmessage = function (evt) {
+		if (evt.data instanceof Blob && evt.data.size > 0 ) {
+			var length = evt.data.byteLength;
+			var blob = evt.data;
+			console.log(blob);
+			//var blob = new Blob([evt.data],{type:'image/png'});
+			var url = URL.createObjectURL(blob);
+			var image = document.getElementById("image");
+			var img = new Image();
+			img.onload = function(){
+				var ctx = image.getContext("2d");
+				ctx.drawImage(img, 0, 0);
+			}
+			img.src = url;
+			document.getElementById( 'bottom' ).scrollIntoView();
+
+		}
+		else if ("string"==typeof evt.data) 
+			{var desc = evt.data;
+			console.log(evt.data);
+			var json = evt.data;
+			json = JSON.parse(json);
+			console.log(json);
+			json["category"] = "A";
+			json["name"] = "A";
+			for (var i=0;i<json["x"].length;i++) {
+				json["x"][i] = [json["x"][i],json["z"][i]]
+				json["y"][i] = [json["x"][i][0],json["y"][i]]
+				json["size"][i] = [json["size"][i], 20000000]
+			}
+			jsonData = [json];
+			var op5_tabdata = []
+			keys = json.keys();
+			while (keys.hasNext())
+					{
+						// Get the key
+						key = keys.next();
+						// Get the value
+						value = json.getJSONObject(key);
+						op5_tabdata.push(value);
+						// Do something...
+					}
+				for (var i=0;i<series.length;i++){
+					console.log(op5_tabdata);
+					series[i]["data"] = op5_tabdata[i];
+					}
+			myChart5.setOption(option5, true);
+			if ("Prediction Start"==desc.split("\n")[0]) {
+				console.log(desc);
+			}
+		}
+		else {
+			var op5_tabdata = []
+		}
+	}*/
+
+	init();
+	
+</script>
+<p id = "ast"></p>
+<p id = "ast2"></p
+
+</div>
+
